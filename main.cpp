@@ -11,8 +11,6 @@
 #define TXT_YELLOW printf("\x1b[33m");
 #define TXT_WHITE printf("\x1b[39m");
 
-
-
 #define C_RESET printf("\x1b[0m\n");
 
 #define BG_BLUE printf("\x1b[44m");
@@ -41,7 +39,6 @@ int main(int argc, char const *argv[])
 {
 	system("clear");
 	TXT_BOLD;
-
 
 	int amount_of_enemies;
 	if(argc>1) amount_of_enemies=atoi(argv[1]);
@@ -82,7 +79,8 @@ int main(int argc, char const *argv[])
 
 	C_RESET;
 
-	delete map, player;
+	delete map;
+	delete player;
 	delete[] *enemy;
 	gotoxy(0, 30);
 }
@@ -104,8 +102,6 @@ int swim(Subm* subm, Map* map, int x, int y)
 	int y1 = subm->y();
 
 	if ((x1==x && y1==y) || (x<0 || x>map->size() || y<0 || y>map->size())) return 0; //0 - bledny kurs
-
-
 
 	//gdy kierunek jest rownolegly do ktorejs z osi wspolrzednych:
 	if(x1 == x)
@@ -195,21 +191,20 @@ int swim(Subm* subm, Map* map, int x, int y)
 		}
 		else if(map->coordStatus(x1-1,y1)) return 2;
 	}
-
-
+	return 0;
 }
 
 
 bool dipOut(Subm* subm, int z)
 {
 	if ((subm->z()==0 && z>0) || (subm->z()==subm->max_z() && z<0)) return 0;
-
 	else
 	{
 		if (z<0) {subm->changeCoord(subm->x(), subm->y(), subm->z()-1); return 1;}
 		if (z>0) {subm->changeCoord(subm->x(), subm->y(), subm->z()+1); return 1;}
 		if (z==0) return 0;
 	}
+	return 0;
 }
 
 bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int counter, int amount_of_enemies, int& shooted_enemies)
@@ -369,11 +364,9 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 			clear();
 			TXT_BOLD;
 
-			if (player->amOfTorpedo()>0)
-			{
-				double damageData[2];
-				if (map->coordStatus(x, y)!=0  && map->coordStatus(x, y)!=4)
+			if (player->amOfTorpedo()>0 && map->coordStatus(x, y)!=0  && map->coordStatus(x, y)!=4)
 				{
+					double damageData[2];
 					
 					bool hit;
 					for(int i=0; i<amount_of_enemies; i++)
@@ -396,7 +389,6 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 					{
 						gotoxy(62,20); printf("Nie trafiono w cel. [Przy szansie %d%%]", (int)damageData[0]);
 					}
-				}
 			}
 		break;
 		}
@@ -424,11 +416,7 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 				}		
 			break;
 		}
-	
-
 	}
-
-
 
 	C_RESET;
 	}
@@ -451,6 +439,7 @@ bool enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
 		else subm->changeMType(3, map);
 	}
 	else subm->changeMType(4, map);
+	return 0;
 }
 
 void hearing(Subm** enemy, Subm* player, Map* map, int amount_of_enemies)
@@ -461,13 +450,14 @@ void hearing(Subm** enemy, Subm* player, Map* map, int amount_of_enemies)
 		else enemy[i]->changeMType(3, map);
 		if (enemy[i]->isDeath()==1) enemy[i]->changeMType(4, map);
 	}
-
 }
 
 void clear()
 {
 	C_RESET;
-	gotoxy(0,0); for(int i=0; i<40000; printf(" "), i++); gotoxy(0,0);
+	gotoxy(0,0); 
+	for(int i=0; i<40000; printf(" "), i++); 
+	gotoxy(0,0);
 }
 
 void refreshMap(Subm*, Subm**, Map*)
