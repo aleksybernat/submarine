@@ -73,7 +73,6 @@ void Map::showMap()
 				case 3: {printf(" ~ "); break;}
 				case 4: {TXT_BLACK; BG_YELLOW; printf("<d>"); TXT_CYAN; BG_BLUE; break;}
 			}
-
 		}
 
 		C_RESET;
