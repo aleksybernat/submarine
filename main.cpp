@@ -44,7 +44,7 @@ int main(int argc, char const *argv[])
 
 	int amount_of_enemies;
 	if(argc>1) amount_of_enemies=atoi(argv[1]);
-	else amount_of_enemies=4;
+	else amount_of_enemies=8;
 	if (amount_of_enemies>32) amount_of_enemies=32;
 
 	int shooted_enemies=0;
