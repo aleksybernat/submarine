@@ -102,3 +102,8 @@ bool Subm::kill()
 	if (_hp<=0) {_is_death=1; return 1;}
 	else return 0;
 }
+
+void Subm::getHp(int hp)
+{
+	_hp=hp;
+}

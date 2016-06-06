@@ -29,6 +29,7 @@ public:
 	int mtype() {return _mtype;}
 
 	int hp() {return _hp;}
+	void getHp(int hp);
 	int sp() {return _sp;}
 	int agility() {return _agility;}
 	int sonarRange() {return _sonar_range;}

@@ -1,3 +1,3 @@
 all:
-	g++ *.cpp -std=c++0x -o submarine
-	./submaine 6
+	g++ *.cpp -std=c++0x -o subm
+	./subm 6

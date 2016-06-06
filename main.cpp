@@ -9,13 +9,16 @@
 
 #define TXT_BOLD printf("\x1b[1m");
 #define TXT_YELLOW printf("\x1b[33m");
+#define TXT_RED printf("\x1b[31m");
 #define TXT_WHITE printf("\x1b[39m");
+#define TXT_GREEN printf("\x1b[32m");
 
 #define C_RESET printf("\x1b[0m\n");
 
 #define BG_BLUE printf("\x1b[44m");
 #define BG_CYAN printf("\x1b[46m");
 #define BG_BLACK printf("\x1b[47m");
+#define MV_POINTS 24
 
 #define SLEEP usleep(600000);
 
@@ -27,11 +30,10 @@ void clear();
 int swim(Subm*, Map*, int, int);
 bool dipOut(Subm*, int); //zanurzenie/wynurzenie
 void hearing(Subm**, Subm*, Map*, int); //nasluchiwanie
-
-void refreshMap(Subm*, Subm**, Map*);
+int spToMv(Subm*);  //funkcja przelicza szybkosc statku na zużywane punkty ruchu
 
 bool round(Map*, Subm*, Subm**, int* ,int* ,int, int, int&);
-bool enemyRound(Subm*, Map*, Subm*, int);
+int enemyRound(Subm*, Map*, Subm*, int); //zwraca ilosc zadanych obrazeń
 
 using namespace std;
 
@@ -42,22 +44,26 @@ int main(int argc, char const *argv[])
 
 	int amount_of_enemies;
 	if(argc>1) amount_of_enemies=atoi(argv[1]);
-	else amount_of_enemies=6;
+	else amount_of_enemies=4;
+	if (amount_of_enemies>32) amount_of_enemies=32;
 
 	int shooted_enemies=0;
 
 	srand(time(NULL));
 	Map* map = new Map(18);
-	Subm* player = new Subm(1, lrand(0,map->size()-1),lrand(0,map->size()-1),10, lrand(10,40), lrand(10,15), lrand(1,7), lrand(6,11), lrand(30,50), lrand(100,120), lrand(2,4), lrand(10,200), lrand(4,8));
-	//mtype, x, y, z, hp, speed, agility, sonar_range, am_of_torpedo, max_z, perm_sonar_range
+	Subm* player = new Subm(1, lrand(0,map->size()-1),lrand(0,map->size()-1),10, lrand(20,50), lrand(4,13), lrand(1,7), lrand(7,15), lrand(100,200), lrand(11,20), lrand(3,6), lrand(10,20), lrand(4,8));
+	//mtype, x, y, z, hp, speed, agility, sonar_range, am_of_torpedo, max_z, perm_sonar_range, attack, attack_range
 	Subm* enemy[amount_of_enemies];
 
+	int damage;
 
 	map->changeCoordStatus(player->x(), player->y(), player->mtype());
 	
 	for(int i=0; i<amount_of_enemies; i++)
 	{
-		enemy[i] = new Subm(3, lrand(0,map->size()-1),lrand(0,map->size()-1),10, lrand(10,40), lrand(10,15), lrand(1,7), lrand(10,18), lrand(30,50), lrand(100, 120), lrand(2,4), lrand(10,20), lrand(7,11));
+		int x,y;
+		for(x=lrand(0,map->size()-1), y=lrand(0,map->size()-1); map->coordStatus(x,y) ; x=lrand(0,map->size()-1), y=lrand(0,map->size()-1)); //dopóki stan wylosowanych koordynatów jest różny od zera to szukamy miejsca na statek
+		enemy[i] = new Subm(3,x,y,10, lrand(10,20), lrand(10,15), lrand(1,7), lrand(10,18), lrand(30,50), lrand(13, 20), lrand(2,4), lrand(4,8), lrand(5,9));
 		map->changeCoordStatus(enemy[i]->x(), enemy[i]->y(), enemy[i]->mtype());
 	}
 
@@ -67,15 +73,43 @@ int main(int argc, char const *argv[])
 	last_y=-1;
 	last_x=-1;
 
+	damage=0;
 	while(round(map, player, enemy, &last_x, &last_y, counter, amount_of_enemies, shooted_enemies)==1)
 	{
+		system("clear");
 		counter++;
-
 		for(int i=0; i<amount_of_enemies; i++)
 		{
-			enemyRound(enemy[i], map, player, amount_of_enemies);	
+			damage+=enemyRound(enemy[i], map, player, amount_of_enemies);	
+
+			
+		}
+		if (damage>0)
+			{
+				TXT_BOLD;
+				TXT_RED;
+				gotoxy(100,20); printf("Trafiono w nasz okręt!");
+				gotoxy(100,21); printf("Otrzymane obrazenia: %d", damage);
+			damage=0;
+			}
+		if (player->hp()<=0 || shooted_enemies==amount_of_enemies)
+		{
+			break;
 		}
 	}
+	
+	clear();
+	printf("SUBMARINE SIMULATOR v. 1.0");
+
+	map->showMap();
+		if (player->hp()<=0)
+			{gotoxy(62, 2); TXT_RED; TXT_BOLD; printf("Porażka! Nasz okręt zatonął, koniec bitwy!");}
+		if (shooted_enemies==amount_of_enemies)
+			{gotoxy(62 ,2); TXT_RED; TXT_BOLD; printf("Zwycięstwo! Zatopiono wszystkie okręty!");}
+		if (player->hp()>0 && shooted_enemies!=amount_of_enemies)
+			{gotoxy(62 ,2); TXT_RED; TXT_BOLD; printf("Opuszczono nasz okręt.");}
+		
+
 
 	C_RESET;
 
@@ -197,7 +231,7 @@ int swim(Subm* subm, Map* map, int x, int y)
 
 bool dipOut(Subm* subm, int z)
 {
-	if ((subm->z()==0 && z>0) || (subm->z()==subm->max_z() && z<0)) return 0;
+	if ((subm->z()==0 && z<0) || (subm->z()==subm->max_z() && z>0)) return 0;
 	else
 	{
 		if (z<0) {subm->changeCoord(subm->x(), subm->y(), subm->z()-1); return 1;}
@@ -211,7 +245,7 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 {
 
 	int info=-1;
-	int mv_points=20; //punkty ruchu na turę
+	int mv_points=24; //punkty ruchu na turę
 	char action;
 	do
 	{
@@ -239,19 +273,21 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 	switch (info) //komunikaty dodatkowe!
 	{
 		case 0:
-		{gotoxy(62,20); printf("WPROWADZONO BŁEDNY KURS!"); break;}
+		{gotoxy(100,18); printf("INFO: Wprowadzono błędny kurs."); break;}
 		case 1:
-		{gotoxy(62,20); printf("NA KURSIE ZNAJDUJE SIĘ OBCY OKRĘT!"); break;}
+		{gotoxy(100,18); printf("INFO: Na kursie znajduje się obcy okręt."); break;}
 		case 2:
-		{gotoxy(62,20); printf("NOWY KURS JEST TAKI JAK DOCELOWY!");break;}
+		{gotoxy(100,18); printf("INFO: Błędny kurs.");break;}
 		case 3:
-		{gotoxy(62,20); printf("NA KURSIE ZNAJDUJE SIĘ OBCY OKRĘT!");break;}
+		{gotoxy(100,18); printf("INFO: Na kursie znajduje się obcy okręt.");break;}
+		case 4:
+		{gotoxy(100,18); printf("INFO: Brak wystarczającej ilości punktów ruchu."); break;}
 	}
 	info=-1;
 	TXT_WHITE;
 
 	gotoxy(1, 23); printf("Tura: %d   Pozostałe punkty ruchu: %d, Wrogich okrętów: %d/%d", counter, mv_points, amount_of_enemies-shooted_enemies, amount_of_enemies);
-	gotoxy(62, 2); printf("STATYSTYKI OKRĘTU:");	
+	gotoxy(62, 2); printf("STATYSTYKI OKRĘTU:");
 	gotoxy(62, 3); printf("> Wytrzymałość: %d", player->hp());	
 	gotoxy(62, 4); printf("> Szybkość maksymalna: %d", player->sp());
 	gotoxy(62, 5); printf("> Zwrotność: %d", player->agility());
@@ -261,19 +297,22 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 	gotoxy(62, 9); printf("> Liczba torped: %d", player->amOfTorpedo());
 	gotoxy(62, 10); printf(" >> Siła torpedy: %d", player->attack());
 	gotoxy(62, 11); printf(" >> Zasieg strzału: %d", player->attackRange());
+	gotoxy(62, 12); printf("> Maksymalne zanurzenie: %d", player->max_z());
 
-	gotoxy(90, 2); printf("DOSTĘPNE AKCJE:");  
-	gotoxy(90, 3); printf("Płyń          - p");
-	gotoxy(90, 4); printf("Ostatni kurs  - o");
-	gotoxy(90, 5); printf("Wynurz        - w");
-	gotoxy(90, 6); printf("Zanurz        - z");
-	gotoxy(90, 7); printf("Nasłuchuj     - n");
-	gotoxy(90, 8); printf("Strzelaj      - s");
+	gotoxy(100, 2); printf("DOSTĘPNE AKCJE  - SKRÓT  -  KOSZT:");  
+	gotoxy(100, 3); printf("Płyń            -  p     -   %d",spToMv(player));
+	gotoxy(100, 4); printf("Ostatni kurs    -  o     -   %d",spToMv(player));
+	gotoxy(100, 5); printf("Wynurz          -  w     -   %d",spToMv(player));
+	gotoxy(100, 6); printf("Zanurz          -  z     -   %d",spToMv(player));
+	gotoxy(100, 7); printf("Nasłuchuj       -  n     -   12");
+	gotoxy(100, 8); printf("Strzelaj        -  s     -   5");
+	gotoxy(100, 9); printf("Omiń turę       -  q     -   0");
+	gotoxy(100, 10); printf("WYJŚCIE Z GRY   -  X");
 
-	gotoxy(120, 2); printf("INFORMACJE:");
-	gotoxy(120, 3); printf("Koordynaty: (%d, %d, %d)", player->x(), player->y(), player->z());
-	gotoxy(120, 4); printf("Ostatni kurs: (%d, %d)", *last_x, *last_y);
-
+	gotoxy(100, 12); printf("INFORMACJE:");
+	gotoxy(100, 13); printf("Koordynaty: (%d, %d, %d)", player->x(), player->y(), player->z());
+	gotoxy(100, 14); printf("Ostatni kurs: (%d, %d)", *last_x, *last_y);
+	gotoxy(100, 16); printf("PANEL KOMUNIKATÓW DODATKOWYCH:");
 
 	gotoxy(62,16); printf("WPROWADŹ ZNAK AKCJI: ");
 	cin >> action;
@@ -281,88 +320,139 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 
 	switch (action)
 	{
-		case 'p': 
+		case 'p':
 		{
-
+			
 			int x, y;
 			gotoxy(62,17);
+			if (mv_points>=spToMv(player))
+			{
 			printf("Wprowadź kurs:");
 			gotoxy(62,18); printf("x = "); cin >> x; cin.clear(); cin.sync();
 			gotoxy(62,19); printf("y = "); cin >> y; cin.clear(); cin.sync();
 			*last_x=x;
 			*last_y=y;
 			clear();
-			TXT_BOLD;
-			gotoxy(62,20); printf("Podpływanie...");
-
+			TXT_BOLD; TXT_GREEN;
+			gotoxy(100,17); printf("Podpływanie...");
+			TXT_WHITE;
 			int s=swim(player, map, x, y);
 
 			if (s==0)
 				{info=0; break;}
 			if (s==2)
 				{info=1; break;}
-			mv_points-=4;
-//			gotoxy(-12,0);
+			mv_points-=spToMv(player);
 			break;
+			}
+			else
+			{
+			info=4;
+			break;
+			}
 		}
 		case 'o':
 		{
-			clear();
-			gotoxy(62,17);
-			TXT_BOLD;
-			printf("Kurs: (%d, %d)", *last_x, *last_y);
 			
+			clear();
+			gotoxy(100,17);
+			TXT_BOLD;
+			if (mv_points>=spToMv(player))
+			{
+			TXT_GREEN;
+			printf("Kurs: (%d, %d)", *last_x, *last_y);
+			TXT_WHITE;
 		
 			int s=swim(player, map, *last_x, *last_y);
 			if (s==0)
 				{info=2; break;}
 			if (s==2)
 				{info=3; break;}
-			mv_points-=4;
+			mv_points-=spToMv(player);
 			break;
+			}
+			else
+			{
+			info=4;
+			break;
+			}
 		}
 		case 'w':
 		{
 			clear();
-			gotoxy(62,17);
+			gotoxy(100,17);
 			TXT_BOLD;
+			if (mv_points>=spToMv(player))
+			{
+			TXT_GREEN;
 			printf("Wynurzanie...");
+			TXT_WHITE;
 			dipOut(player, -1);
-
+			mv_points-=spToMv(player);
 			break;
+			}
+			else
+			{
+			info=4;
+			break;
+			}
 		}
 		case 'z':
 		{
 			clear();
-			gotoxy(62,17);
+			gotoxy(100,17);
 			TXT_BOLD;
+			if (mv_points>=spToMv(player))
+			{
+			TXT_GREEN;
 			printf("Zanurzanie...");
-
+			
+			TXT_WHITE;
+			mv_points-=spToMv(player);
 			dipOut(player, 1);
 
 			break;
+			}
+			else
+			{
+			info=4;
+			break;
+			}
 		}
 		case 'n':
 		{
 			clear();
-			gotoxy(62,17);
+			gotoxy(100,17);
 			TXT_BOLD;
+			if (mv_points>=12)
+			{
+			TXT_GREEN;
 			printf("Nasłuchiwanie...");
-			
+			TXT_WHITE;
 			hearing(enemy, player, map, amount_of_enemies);
 			
-			mv_points-=10;
+			mv_points-=12;
 			break;
+			}
+			else
+			{
+			info=4;
+			break;
+			}
 		}
 		case 's':
 		{
 			int x,y;
 			gotoxy(62,17);
+			if (mv_points>=5)
+			{
 			printf("Wprowadź koordynaty celu:");
 			gotoxy(62,18); printf("x = "); cin >> x; cin.clear(); cin.sync();
 			gotoxy(62,19); printf("y = "); cin >> y; cin.clear(); cin.sync();
 			clear();
 			TXT_BOLD;
+			player->getTorpedo(player->amOfTorpedo()-1);
+			mv_points-=5;
 
 			if (player->amOfTorpedo()>0 && map->coordStatus(x, y)!=0  && map->coordStatus(x, y)!=4)
 				{
@@ -371,26 +461,47 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 					bool hit;
 					for(int i=0; i<amount_of_enemies; i++)
 					{
-						if (enemy[i]->x()==x && enemy[i]->y()==y)
+						if (enemy[i]->x()==x && enemy[i]->y()==y && enemy[i]->mtype()!=4)
 						{
 							gotoxy(62,19);
 							hit = enemy[i]->damage(player->attack(), player->distanceTo(enemy[i]), player->attackRange(), damageData[0], damageData[1]);
-							player->getTorpedo(player->amOfTorpedo()-1);
+			
 							if (enemy[i]->kill()==1) shooted_enemies++;
 							break;
 						}
 					}
+					TXT_GREEN;
 					if (hit==1)
 					{
-						gotoxy(62,20); printf("Trafiono w cel: [Przy szansie %d%%]", (int)damageData[0]);
-						gotoxy(62,21); printf("Otrzymane obrazenia: %d / %d", (int)damageData[1], player->attack());
+						gotoxy(100,20); printf("Trafiono w cel: [Przy szansie %d%%]", (int)damageData[0]);
+						gotoxy(100,21); printf("Otrzymane obrazenia: %d / %d", (int)damageData[1], player->attack());
 					}
 					else
 					{
-						gotoxy(62,20); printf("Nie trafiono w cel. [Przy szansie %d%%]", (int)damageData[0]);
+						gotoxy(100,20); printf("Nie trafiono w cel. [Przy szansie %d%%]", (int)damageData[0]);
 					}
-			}
+					TXT_WHITE;
+				break;
+				}
+
+			if(player->amOfTorpedo()==0) {gotoxy(100,20); TXT_RED; printf("BRAK TORPED!"); TXT_WHITE;}
+			if(map->coordStatus(x,y)==0 || map->coordStatus(x,y)==4) {gotoxy(100,20);TXT_YELLOW; printf("Strzelono w miejsce gdzie nie ma okrętu."); TXT_WHITE;}
 		break;
+		}
+			else
+			{
+			info=4;
+			break;
+			}
+		}
+		case 'q':
+		{
+			gotoxy(100, 17);
+			TXT_GREEN;
+			printf("Czekanie...");
+			TXT_WHITE;
+			mv_points=0;
+			break;
 		}
 		case 'd':
 		{
@@ -407,13 +518,20 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 					{
 						if (enemy[i]->x()==x && enemy[i]->y()==y)
 						{
-							gotoxy(62,20); printf("DANE OKRĘTU:");
-							gotoxy(62,21); printf("Hp: %d", enemy[i]->hp());
-							gotoxy(62,22); printf("Odległość od okrętu: %f", enemy[i]->distanceTo(player));
+							TXT_GREEN;
+							gotoxy(100,20); printf("DANE OKRĘTU:");
+							gotoxy(100,21); printf("Hp: %d", enemy[i]->hp());
+							gotoxy(100,22); printf("Odległość od okrętu: %f", enemy[i]->distanceTo(player));
+							TXT_WHITE;
 							break;
 						}
 					}
 				}		
+			break;
+		}
+		case 'X':
+		{
+			return 0;
 			break;
 		}
 	}
@@ -424,7 +542,7 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 	return 1;
 }
 
-bool enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
+int enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
 {
 	if (subm->isDeath()==0)
 	{
@@ -439,6 +557,20 @@ bool enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
 		else subm->changeMType(3, map);
 	}
 	else subm->changeMType(4, map);
+	
+	if (subm->distanceTo(player)<subm->attackRange())
+		{
+			double damageData[2];
+			bool hit = player->damage(subm->attack(), subm->distanceTo(player),subm->attackRange(),damageData[0], damageData[1]);
+			TXT_BOLD;
+			TXT_RED;
+			if (hit==1)
+			{
+				return damageData[1];
+			}
+			else return 0;
+		}
+
 	return 0;
 }
 
@@ -455,12 +587,16 @@ void hearing(Subm** enemy, Subm* player, Map* map, int amount_of_enemies)
 void clear()
 {
 	C_RESET;
+	system("clear");
 	gotoxy(0,0); 
-	for(int i=0; i<40000; printf(" "), i++); 
+	for(int i=0; i<22*4*3; printf(" "), i++); 
 	gotoxy(0,0);
 }
 
-void refreshMap(Subm*, Subm**, Map*)
+int spToMv(Subm* subm)
 {
+	if (subm->sp()>=MV_POINTS) return 1;
+	if (subm->sp()<=1) return MV_POINTS;
 
+	return MV_POINTS/subm->sp(); 
 }
