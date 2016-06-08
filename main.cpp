@@ -99,7 +99,7 @@ int main(int argc, char const *argv[])
 	}
 	
 	clear();
-	printf("SUBMARINE SIMULATOR v. 1.0");
+	printf("SUBMARINE SIMULATOR v. 1.0     Autor: Aleksy Bernat");
 
 	map->showMap();
 		if (player->hp()<=0)
@@ -254,7 +254,7 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 	TXT_BOLD;
 	TXT_WHITE;
 	gotoxy(0,0);
-	printf("SUBMARINE SIMULATOR v. 1.0");
+	printf("SUBMARINE SIMULATOR v. 1.0              Autor: Aleksy Bernat");
 
 	map->showMap();
 		if (action!='n')
@@ -475,6 +475,7 @@ bool round(Map* map, Subm* player, Subm** enemy, int* last_x, int* last_y, int c
 					{
 						gotoxy(100,20); printf("Trafiono w cel: [Przy szansie %d%%]", (int)damageData[0]);
 						gotoxy(100,21); printf("Otrzymane obrazenia: %d / %d", (int)damageData[1], player->attack());
+
 					}
 					else
 					{
