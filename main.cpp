@@ -555,9 +555,6 @@ int enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
 
 		if (player->distanceTo(subm) <= player->permSonarRange()) subm->changeMType(2, map); //widoczność
 		else subm->changeMType(3, map);
-	}
-	else subm->changeMType(4, map);
-	
 	if (subm->distanceTo(player)<subm->attackRange())
 		{
 			double damageData[2];
@@ -570,7 +567,10 @@ int enemyRound(Subm* subm, Map* map, Subm* player, int amount_of_enemies)
 			}
 			else return 0;
 		}
-
+	}
+	else subm->changeMType(4, map);
+	
+	
 	return 0;
 }
 
